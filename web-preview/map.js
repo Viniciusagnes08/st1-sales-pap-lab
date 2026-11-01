@@ -1,5 +1,14 @@
 // Mapa web de implementação própria: raster OpenStreetMap + projeção Mercator + SVG.
 // Requer internet para os tiles; posições e polígonos continuam visíveis sem tiles.
+// Map positions are geographic orientation points, not ST1 coverage polygons.
+export const MAP_REGIONS=Object.freeze({
+ all:{label:'Grande Ilha (MA)',lat:-2.550,lon:-44.215,zoom:10},
+ sa_luis:{label:'S\u00e3o Lu\u00eds',lat:-2.529,lon:-44.302,zoom:13},
+ ribamar:{label:'S\u00e3o Jos\u00e9 de Ribamar',lat:-2.562,lon:-44.060,zoom:13},
+ paco:{label:'Pa\u00e7o do Lumiar',lat:-2.532,lon:-44.108,zoom:13},
+ raposa:{label:'Raposa',lat:-2.433,lon:-44.100,zoom:13}
+});
+
 const EARTH=256;
 const clamp=(v,min,max)=>Math.min(max,Math.max(min,v));
 const latRad=lat=>clamp(lat,-85.05112878,85.05112878)*Math.PI/180;
@@ -17,13 +26,13 @@ function svgEscape(text){return String(text??'').replaceAll('&','&amp;').replace
 export class OperationMap {
   constructor(parent, options={}) {
     this.host=parent;this.options=options;this.data={zones:[],sellers:[],ctos:[]};
-    this.center={lat:-2.5366,lon:-44.285};this.zoom=13;
-    this.selectedPoint=options.selectedPoint||null;
+    this.center={lat:MAP_REGIONS.all.lat,lon:MAP_REGIONS.all.lon};this.zoom=MAP_REGIONS.all.zoom;
+    this.selectedPoint=options.selectedPoint||null;this.loadedTile=false;this.failedTiles=0;
     this.showZones=true;this.showSellers=true;this.showCtos=true;this.routeSegments=[];this.playbackPoint=null;
     this.host.innerHTML=`<div class="map-tiles"></div><svg class="map-shapes" xmlns="http://www.w3.org/2000/svg"></svg><div class="map-markers"></div>
-      <div class="map-grid"></div><div class="map-controls"><button type="button" data-map-zoom="in" title="Ampliar">+</button><button type="button" data-map-zoom="out" title="Reduzir">−</button><button type="button" data-map-zoom="home" title="Centralizar em São Luís">⌖</button></div>
-      <div class="map-attribution">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> · tiles requerem internet</div>`;
-    this.tiles=parent.querySelector('.map-tiles');this.shapes=parent.querySelector('.map-shapes');this.markers=parent.querySelector('.map-markers');
+      <div class="map-grid"></div><div class="map-network" role="status" aria-live="polite">Carregando mapa do OpenStreetMap...</div><div class="map-controls"><button type="button" data-map-zoom="in" title="Ampliar">+</button><button type="button" data-map-zoom="out" title="Reduzir">−</button><button type="button" data-map-zoom="home" title="Mostrar Grande Ilha (MA)">⌖</button></div>
+      <div class="map-attribution">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> · mapa com ruas reais</div>`;
+    this.tiles=parent.querySelector('.map-tiles');this.shapes=parent.querySelector('.map-shapes');this.markers=parent.querySelector('.map-markers');this.network=parent.querySelector('.map-network');
     this.handlePointerDown=this.pointerDown.bind(this);this.handlePointerMove=this.pointerMove.bind(this);this.handlePointerUp=this.pointerUp.bind(this);
     this.handleWheel=this.wheel.bind(this);
     parent.addEventListener('pointerdown',this.handlePointerDown);
@@ -32,7 +41,7 @@ export class OperationMap {
     parent.addEventListener('pointercancel',this.handlePointerUp);
     parent.addEventListener('wheel',this.handleWheel,{passive:false});
     parent.querySelectorAll('[data-map-zoom]').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();
-      if(el.dataset.mapZoom==='home'){this.center={lat:-2.5366,lon:-44.285};this.zoom=13;this.draw();}
+      if(el.dataset.mapZoom==='home'){this.center={lat:MAP_REGIONS.all.lat,lon:MAP_REGIONS.all.lon};this.zoom=MAP_REGIONS.all.zoom;this.draw();}
       else this.setZoom(this.zoom+(el.dataset.mapZoom==='in'?1:-1));
     }));
     this.observer=new ResizeObserver(()=>this.draw());this.observer.observe(parent);
@@ -46,6 +55,7 @@ export class OperationMap {
   }
   fromScreen(x,y){const {w,h}=this.dims(),c=projected(this.center.lat,this.center.lon,this.zoom);return unprojected(c.x+x-w/2,c.y+y-h/2,this.zoom);}
   setZoom(next){this.zoom=clamp(next,3,19);this.draw();}
+  jumpToRegion(name){const place=MAP_REGIONS[name]||MAP_REGIONS.all;this.moveTo(place.lat,place.lon,place.zoom);}
   moveTo(lat,lon,zoom){this.center={lat,lon};if(zoom)this.zoom=zoom;this.draw();}
   updateData(data){this.data=data;this.drawOverlay();}
   selectPoint(p){this.selectedPoint=p;this.drawOverlay();}
@@ -62,7 +72,10 @@ export class OperationMap {
       if(y<0||y>=n)continue;
       const key=`${this.zoom}/${(x+n)%n}/${y}`;keep.add(key);
       let tile=this.tiles.querySelector(`img[data-tile="${key}"]`);
-      if(!tile){tile=document.createElement('img');tile.className='map-tile';tile.dataset.tile=key;tile.alt='';tile.loading='eager';tile.draggable=false;tile.src=`https://a.tile.openstreetmap.org/${key}.png`;tile.addEventListener('error',()=>{tile.style.visibility='hidden';});this.tiles.append(tile);}
+      if(!tile){tile=document.createElement('img');tile.className='map-tile';tile.dataset.tile=key;tile.alt='';tile.loading='eager';tile.draggable=false;tile.referrerPolicy='strict-origin-when-cross-origin';
+        tile.addEventListener('load',()=>{this.loadedTile=true;this.network.textContent='OpenStreetMap conectado \u2022 ruas e bairros reais';this.network.classList.add('ok');this.network.classList.remove('error');});
+        tile.addEventListener('error',()=>{this.failedTiles++;tile.style.visibility='hidden';if(!this.loadedTile&&this.failedTiles>=2){this.network.textContent='Mapa indispon\u00edvel: verifique sua conex\u00e3o com o OpenStreetMap';this.network.classList.add('error');}});
+        tile.src=`https://tile.openstreetmap.org/${key}.png`;this.tiles.append(tile);}
       tile.style.left=`${Math.round(x*256-c.x+w/2)}px`;tile.style.top=`${Math.round(y*256-c.y+h/2)}px`;
     }
     this.tiles.querySelectorAll('img').forEach(el=>{if(!keep.has(el.dataset.tile))el.remove();});
