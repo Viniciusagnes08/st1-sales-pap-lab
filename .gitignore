@@ -1,0 +1,14 @@
+node_modules/
+mobile/node_modules/
+.expo/
+.vercel/
+dist/
+data/
+.env
+.env.*
+!.env.example
+*.sqlite
+*.sqlite-*
+*.db
+*.log
+*.zip
