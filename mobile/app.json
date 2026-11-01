@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "ST1 PAP | Homologação",
+    "slug": "pap-app-homologacao",
+    "scheme": "paplab",
+    "version": "0.2.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0B1219",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.paplab.homologacao",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "O PAP Lab consulta sua localização durante a jornada iniciada por você.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Com sua autorização, o PAP Lab registra a posição somente durante sua jornada de trabalho ativa.",
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true,
+          "NSAllowsLocalNetworking": true
+        }
+      }
+    },
+    "android": {
+      "package": "com.paplab.homologacao",
+      "usesCleartextTraffic": true,
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
+        "POST_NOTIFICATIONS"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true,
+          "locationAlwaysAndWhenInUsePermission": "Compartilhar localização somente enquanto a jornada PAP estiver iniciada.",
+          "locationWhenInUsePermission": "Mostrar localização e registrar visitas durante a jornada PAP."
+        }
+      ],
+      ["expo-secure-store",{"configureAndroidBackup": true}]
+    ],
+    "extra": {"labOnly": true, "productionBlocked": true},
+    "experiments": {"reactCompiler": false}
+  }
+}

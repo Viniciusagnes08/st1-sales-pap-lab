@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2"><Document>
+  <name>Perimetro demonstrativo ficticio</name><Placemark><name>TESTE | Setor KML fictício</name><Polygon>
+    <outerBoundaryIs><LinearRing><coordinates>
+      -44.347,-2.550,0 -44.325,-2.550,0 -44.325,-2.530,0 -44.347,-2.530,0 -44.347,-2.550,0
+    </coordinates></LinearRing></outerBoundaryIs>
+  </Polygon></Placemark>
+</Document></kml>

@@ -1,0 +1,16 @@
+{
+  "name": "st1-sales-pap-lab",
+  "private": true,
+  "version": "0.2.0",
+  "type": "module",
+  "description": "Homologação independente ST1 Sales PAP: Web de gestão, API móvel, aplicativo Android/iOS e simulação comercial.",
+  "engines": {
+    "node": ">=22.16.0"
+  },
+  "scripts": {
+    "dev": "node --experimental-sqlite --watch server/index.mjs",
+    "start": "node --experimental-sqlite server/index.mjs",
+    "test": "node --experimental-sqlite --test",
+    "smoke": "node scripts/smoke-http.mjs"
+  }
+}

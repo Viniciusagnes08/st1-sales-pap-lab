@@ -1,0 +1,7 @@
+{
+  "type":"FeatureCollection",
+  "metadata":{"notice":"FICTICIO: Apenas exemplo de formato. Não representa cobertura real da ST1 Internet."},
+  "features":[
+    {"type":"Feature","properties":{"name":"TESTE | Exemplo de perímetro (fictício)","category":"TESTE","color":"#d8a45e"},"geometry":{"type":"Polygon","coordinates":[[[-44.32,-2.55],[-44.30,-2.55],[-44.30,-2.53],[-44.32,-2.53],[-44.32,-2.55]]]}}
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "name": "st1-pap-app-homologacao",
+  "version": "0.2.0",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "check": "expo install --check"
+  },
+  "dependencies": {
+    "expo": "~58.0.0",
+    "expo-location": "~58.0.20",
+    "expo-task-manager": "~58.0.13",
+    "expo-secure-store": "~58.0.2",
+    "expo-status-bar": "~58.0.4",
+    "react": "19.3.0",
+    "react-native": "0.88.0",
+    "react-native-maps": "1.29.11"
+  },
+  "devDependencies": {}
+}
