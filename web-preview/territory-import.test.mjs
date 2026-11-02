@@ -54,7 +54,8 @@ test('GeoJSON conserva nomes, pastas, polígonos e distingue CTO de pontos gené
  assert.equal(parsed.polygons.length,1);
  assert.equal(parsed.points.length,2);
  assert.equal(parsed.ctoCandidates,1);
- assert.equal(parsed.ignored,1);
+ assert.equal(parsed.lines.length,1);
+ assert.equal(parsed.ignored,0);
  assert.equal(parsed.polygons[0].geometry.coordinates[0].length,5);
  assert.ok(parsed.folders.includes('Regional / Norte'));
 });
@@ -66,4 +67,15 @@ test('upload restringe formato e tamanho antes de ler conteúdo',async()=>{
  const fake=(name,size)=>({name,size,arrayBuffer:async()=>Buffer.from('{}')});
  await assert.rejects(()=>readTerritoryFile(fake('secreto.exe',100)),/Formato inválido/);
  await assert.rejects(()=>readTerritoryFile(fake('mapa.kmz',TERRITORY_LIMITS.fileBytes+1)),/12 MB/);
+});
+
+test('GeoJSON apenas com linhas de rede é importável sem simular polígonos ou CTOs',()=>{
+ const parsed=parseGeoJsonText(JSON.stringify({type:'FeatureCollection',features:[
+  {type:'Feature',properties:{name:'Trecho de fibra',folder:'Rede / Distribuição'},geometry:{type:'LineString',coordinates:[[-44.3,-2.54],[-44.301,-2.541]]}}
+ ]}));
+ assert.equal(parsed.polygons.length,0);
+ assert.equal(parsed.points.length,0);
+ assert.equal(parsed.lines.length,1);
+ assert.equal(parsed.lines[0].name,'Trecho de fibra');
+ assert.ok(parsed.folders.includes('Rede / Distribuição'));
 });
