@@ -105,16 +105,16 @@ export class OperationMap {
     let markers='';
     if(this.showSellers)for(const s of this.data.sellers||[]){
       if(!s.position||!s.active)continue;
-      const p=this.toScreen(s.position.lat,s.position.lon),fresh=s.position.fresh,sim=s.position.source==='SIMULADO';
+      const p=this.toScreen(s.position.lat,s.position.lon),fresh=s.position.fresh;
       if(p.x < -45||p.x > w+45||p.y < -45||p.y>h+45)continue;
       const lastWord=s.name?.trim().split(' ').at(-1)||'V';const abbreviation=svgEscape(/^\d+$/.test(lastWord)?lastWord.slice(-2):lastWord.slice(0,1).toUpperCase());
-      markers+=`<button class="geo-marker seller-marker ${fresh?'fresh':'stale'} ${sim?'sim':''}" type="button" title="${svgEscape(s.name)} • ${sim?'Simulação':fresh?'GPS recente':'GPS desatualizado'}" style="left:${p.x}px;top:${p.y}px" data-seller-id="${s.id}">${abbreviation}</button>`;
+      markers+=`<button class="geo-marker seller-marker ${fresh?'fresh':'stale'}" type="button" title="${svgEscape(s.name)} • ${fresh?'GPS recente':'GPS desatualizado'}" style="left:${p.x}px;top:${p.y}px" data-seller-id="${s.id}">${abbreviation}</button>`;
     }
     if(this.showCtos)for(const c of this.data.ctos||[]){
       const p=this.toScreen(c.lat,c.lon);if(p.x< -30||p.x>w+30||p.y< -30||p.y>h+30)continue;
       markers+=`<button class="geo-marker cto-marker ${c.ports_free>0&&c.status==='online'?'available':'unavailable'}" type="button" title="${svgEscape(c.name)} • ${c.ports_free} portas" style="left:${p.x}px;top:${p.y}px" data-cto-id="${c.id}">⌁</button>`;
     }
-    if(this.selectedPoint){const p=this.toScreen(this.selectedPoint.lat,this.selectedPoint.lon);markers+=`<div class="point-pin" title="Endereço de instalação (ponto de simulação)" style="left:${p.x}px;top:${p.y}px"><span></span></div>`;}
+    if(this.selectedPoint){const p=this.toScreen(this.selectedPoint.lat,this.selectedPoint.lon);markers+=`<div class="point-pin" title="Endereço de instalação (ponto selecionado)" style="left:${p.x}px;top:${p.y}px"><span></span></div>`;}
     if(this.playbackPoint){const p=this.toScreen(this.playbackPoint.lat,this.playbackPoint.lon);markers+=`<div class="track-playback-pin" style="left:${p.x}px;top:${p.y}px" title="Posição da reprodução">▶</div>`;}
     this.markers.innerHTML=markers;
     this.markers.querySelectorAll('[data-seller-id]').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();const id=Number(el.dataset.sellerId);this.options.onSeller?.(id);}));
