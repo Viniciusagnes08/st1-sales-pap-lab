@@ -46,7 +46,7 @@ test('KMZ rejeita CRC incorreto, entrada truncada e ZIP vazio',async()=>{
 });
 test('GeoJSON conserva nomes, pastas, polígonos e distingue CTO de pontos genéricos',()=>{
  const parsed=parseGeoJsonText(JSON.stringify({type:'FeatureCollection',features:[
-  {type:'Feature',properties:{name:'Área Azul',folder:'Regional / Norte'},geometry:{type:'Polygon',coordinates:[[[-44.35,-2.57],[-44.27,-2.57],[-44.27,-2.52],[-44.35,-2.52]]]}}},
+  {type:'Feature',properties:{name:'Área Azul',folder:'Regional / Norte'},geometry:{type:'Polygon',coordinates:[[[-44.35,-2.57],[-44.27,-2.57],[-44.27,-2.52],[-44.35,-2.52]]]}},
   {type:'Feature',properties:{name:'CTO 010',folder:'Rede'},geometry:{type:'Point',coordinates:[-44.31,-2.54]}},
   {type:'Feature',properties:{name:'Referência da Quadra',folder:'Locais'},geometry:{type:'Point',coordinates:[-44.30,-2.55]}},
   {type:'Feature',properties:{name:'Linha de referência'},geometry:{type:'LineString',coordinates:[[-44.30,-2.55],[-44.29,-2.54]]}}
