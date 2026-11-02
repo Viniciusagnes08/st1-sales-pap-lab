@@ -25,7 +25,7 @@ function svgEscape(text){return String(text??'').replaceAll('&','&amp;').replace
 
 export class OperationMap {
   constructor(parent, options={}) {
-    this.host=parent;this.options=options;this.data={zones:[],sellers:[],ctos:[]};
+    this.host=parent;this.options=options;this.data={zones:[],sellers:[],ctos:[],referencePoints:[]};
     this.center={lat:MAP_REGIONS.all.lat,lon:MAP_REGIONS.all.lon};this.zoom=MAP_REGIONS.all.zoom;
     this.selectedPoint=options.selectedPoint||null;this.loadedTile=false;this.failedTiles=0;
     this.showZones=true;this.showSellers=true;this.showCtos=true;this.routeSegments=[];this.playbackPoint=null;
@@ -111,9 +111,19 @@ export class OperationMap {
       markers+=`<button class="geo-marker seller-marker ${fresh?'fresh':'stale'} ${example?'sim':''}" type="button" title="${svgEscape(s.name)} • ${example?'POSIÇÃO FICTÍCIA':fresh?'GPS recente':'GPS desatualizado'}" style="left:${p.x}px;top:${p.y}px" data-seller-id="${s.id}">${abbreviation}</button>`;
     }
     if(this.showCtos)for(const c of this.data.ctos||[]){
+      if(!Number.isFinite(Number(c.lat))||!Number.isFinite(Number(c.lon)))continue;
       const p=this.toScreen(c.lat,c.lon);if(p.x< -30||p.x>w+30||p.y< -30||p.y>h+30)continue;
-      markers+=`<button class="geo-marker cto-marker ${c.ports_free>0&&c.status==='online'?'available':'unavailable'}" type="button" title="${svgEscape(c.name)} • ${c.ports_free} portas ${c.example?'(EXEMPLO FICTÍCIO)':''}" style="left:${p.x}px;top:${p.y}px" data-cto-id="${c.id}">⌁</button>`;
+      const unresolved=c.status==='unverified'||c.ports_free===null;
+      const capacity=unresolved?'capacidade não verificada':String(c.ports_free)+' portas';
+      markers+=`<button class="geo-marker cto-marker ${unresolved?'unverified':c.ports_free>0&&c.status==='online'?'available':'unavailable'}" type="button" title="${svgEscape(c.name)} • ${capacity} ${c.example?'(EXEMPLO FICTÍCIO)':c.source==='ARQUIVO LOCAL'?'(ARQUIVO LOCAL)':''}" style="left:${p.x}px;top:${p.y}px" data-cto-id="${c.id}">⌁</button>`;
     }
+    if(this.showCtos){let shown=0;for(const point of this.data.referencePoints||[]){
+      if(!Number.isFinite(Number(point.lat))||!Number.isFinite(Number(point.lon)))continue;
+      const loc=this.toScreen(Number(point.lat),Number(point.lon));
+      if(loc.x< -20||loc.x>w+20||loc.y< -20||loc.y>h+20)continue;
+      if(++shown>2000)break;
+      markers+=`<div class="geo-marker reference-marker" role="img" aria-label="${svgEscape(point.name)} (ponto de arquivo)" title="${svgEscape(point.name)} • ponto importado, não verificado" style="left:${loc.x}px;top:${loc.y}px">·</div>`;
+    }}
     if(this.selectedPoint){const p=this.toScreen(this.selectedPoint.lat,this.selectedPoint.lon);markers+=`<div class="point-pin" title="Ponto selecionado no cenário de exemplo" style="left:${p.x}px;top:${p.y}px"><span></span></div>`;}
     if(this.playbackPoint){const p=this.toScreen(this.playbackPoint.lat,this.playbackPoint.lon);markers+=`<div class="track-playback-pin" style="left:${p.x}px;top:${p.y}px" title="Posição da reprodução">▶</div>`;}
     this.markers.innerHTML=markers;
