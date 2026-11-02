@@ -24,6 +24,7 @@ jobs:
           node --check web-preview/app.js
           node --check web-preview/operations.js
           node --check web-preview/map.js
+          node --check web-preview/sample-data.js
           node --check web-preview/sales.js
       - name: Rodar testes
         run: npm test
