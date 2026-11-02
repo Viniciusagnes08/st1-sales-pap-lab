@@ -5,6 +5,7 @@ export const TERRITORY_LIMITS = Object.freeze({
   xmlBytes: 8 * 1024 * 1024,
   zipEntries: 5000,
   polygons: 600,
+  lines: 2000,
   points: 5000,
   vertices: 75000
 });
@@ -44,10 +45,10 @@ function normalizePolygon(geometry) {
 }
 
 function collectFeatures() {
-  const out = {polygons:[],points:[],ignored:0,vertices:0};
+  const out = {polygons:[],lines:[],points:[],ignored:0,vertices:0};
   const check = () => {
-    if (out.polygons.length > TERRITORY_LIMITS.polygons || out.points.length > TERRITORY_LIMITS.points || out.vertices > TERRITORY_LIMITS.vertices)
-      throw new Error('Arquivo muito grande para o mapa local. Limites: 600 polígonos, 5.000 pontos ou 75.000 vértices.');
+    if (out.polygons.length > TERRITORY_LIMITS.polygons || out.lines.length > TERRITORY_LIMITS.lines || out.points.length > TERRITORY_LIMITS.points || out.vertices > TERRITORY_LIMITS.vertices)
+      throw new Error('Arquivo muito grande para o mapa local. Limites: 600 polígonos, 2.000 linhas, 5.000 pontos ou 75.000 vértices.');
   };
   return {
     out,
@@ -61,6 +62,21 @@ function collectFeatures() {
       if (geometry.type === 'MultiPoint') {
         for (const p of geometry.coordinates || []) this.add(label,{type:'Point',coordinates:p},layer);
         return;
+      }
+      if (geometry.type === 'LineString' || geometry.type === 'MultiLineString') {
+        const segments=geometry.type==='LineString' ? [geometry.coordinates] : geometry.coordinates;
+        if(!Array.isArray(segments)||!segments.length)throw new Error('Linha sem coordenadas.');
+        const normalized=segments.map(segment=>{
+          if(!Array.isArray(segment)||segment.length<2||segment.length>TERRITORY_LIMITS.vertices)throw new Error('Linha inválida.');
+          return segment.map(pos=>{
+            if(!validPos(pos))throw new Error('Coordenada inválida em linha.');
+            return [Number(pos[0]),Number(pos[1])];
+          });
+        });
+        out.vertices+=normalized.reduce((sum,line)=>sum+line.length,0);
+        out.lines.push({name:label,folder:layer,geometry:geometry.type==='LineString'?
+          {type:'LineString',coordinates:normalized[0]}:{type:'MultiLineString',coordinates:normalized}});
+        check();return;
       }
       if (geometry.type === 'Point') {
         if (!validPos(geometry.coordinates)) {out.ignored++;return;}
@@ -84,7 +100,7 @@ export function parseGeoJsonText(text) {
   try {json=JSON.parse(text);} catch {throw new Error('GeoJSON inválido: não foi possível ler o JSON.');}
   const accumulator = collectFeatures();
   const items = json?.type === 'FeatureCollection' ? json.features : json?.type === 'Feature' ? [json] : [{geometry:json,properties:{}}];
-  if (!Array.isArray(items) || items.length > TERRITORY_LIMITS.points+TERRITORY_LIMITS.polygons) throw new Error('Quantidade excessiva de elementos no GeoJSON.');
+  if (!Array.isArray(items) || items.length > TERRITORY_LIMITS.points+TERRITORY_LIMITS.polygons+TERRITORY_LIMITS.lines) throw new Error('Quantidade excessiva de elementos no GeoJSON.');
   for (let i=0; i<items.length; i++) {
     const f=items[i] || {}, p=f.properties || {};
     accumulator.add(p.name || p.nome || 'Elemento '+(i+1),f.geometry,p.folder || p.pasta || p.layer || p.camada || '');
@@ -138,7 +154,7 @@ export function parseKmlText(text) {
   if (placemarks.length > 10000) throw new Error('KML possui placemarks demais para importação local.');
   for (let i=0;i<placemarks.length;i++) {
     const pm=placemarks[i], name=elementName(pm) || 'Elemento '+(i+1), folder=folderPath(pm);
-    const polygons=descendants(pm,'Polygon'), points=descendants(pm,'Point');
+    const polygons=descendants(pm,'Polygon'), points=descendants(pm,'Point'), lines=descendants(pm,'LineString');
     for (const poly of polygons) accumulator.add(name,parsePolygonKml(poly),folder);
     for (const pt of points) {
       const coords=descendants(pt,'coordinates')[0];
@@ -147,16 +163,21 @@ export function parseKmlText(text) {
       if (!positions.length) continue;
       accumulator.add(name,{type:'Point',coordinates:positions[0]},folder);
     }
-    if (!polygons.length && !points.length) accumulator.out.ignored++;
+    for(const line of lines){
+      const coords=descendants(line,'coordinates')[0];
+      if(!coords){accumulator.out.ignored++;continue;}
+      accumulator.add(name,{type:'LineString',coordinates:parseCoords(coords.textContent)},folder);
+    }
+    if (!polygons.length && !points.length && !lines.length) accumulator.out.ignored++;
   }
   return finish(accumulator.out);
 }
 function finish(out) {
-  if (!out.polygons.length && !out.points.length) throw new Error('Arquivo sem polígonos ou pontos compatíveis.');
+  if (!out.polygons.length && !out.points.length && !out.lines.length) throw new Error('Arquivo sem polígonos, linhas ou pontos compatíveis.');
   return {
-    polygons:out.polygons, points:out.points,ignored:out.ignored,vertices:out.vertices,
+    polygons:out.polygons, lines:out.lines, points:out.points,ignored:out.ignored,vertices:out.vertices,
     ctoCandidates:out.points.filter(p=>p.possibleCto).length,
-    folders:[...new Set([...out.polygons,...out.points].map(f=>f.folder).filter(Boolean))].slice(0,200)
+    folders:[...new Set([...out.polygons,...out.lines,...out.points].map(f=>f.folder).filter(Boolean))].slice(0,200)
   };
 }
 
