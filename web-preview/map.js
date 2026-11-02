@@ -25,7 +25,7 @@ function svgEscape(text){return String(text??'').replaceAll('&','&amp;').replace
 
 export class OperationMap {
   constructor(parent, options={}) {
-    this.host=parent;this.options=options;this.data={zones:[],sellers:[],ctos:[],referencePoints:[]};
+    this.host=parent;this.options=options;this.data={zones:[],sellers:[],ctos:[],referencePoints:[],referenceLines:[]};
     this.center={lat:MAP_REGIONS.all.lat,lon:MAP_REGIONS.all.lon};this.zoom=MAP_REGIONS.all.zoom;
     this.selectedPoint=options.selectedPoint||null;this.loadedTile=false;this.failedTiles=0;
     this.showZones=true;this.showSellers=true;this.showCtos=true;this.routeSegments=[];this.playbackPoint=null;
@@ -93,6 +93,16 @@ export class OperationMap {
           d+=pts.map((p,i)=>`${i===0?'M':'L'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')+' Z ';
         }
         svg+=`<path d="${d}" fill="${color}" fill-opacity=".17" stroke="${color}" stroke-width="1.8" fill-rule="evenodd" stroke-dasharray="5 3" />`;
+      }
+    }
+    if(this.showZones)for(const line of this.data.referenceLines||[]){
+      const g=line.geometry;
+      if(!g||!['LineString','MultiLineString'].includes(g.type))continue;
+      const segments=g.type==='LineString'?[g.coordinates]:g.coordinates;
+      for(const coords of segments){
+        if(!Array.isArray(coords)||coords.length<2)continue;
+        const d=coords.map((p,i)=>{const xy=this.toScreen(p[1],p[0]);return (i?'L':'M')+xy.x.toFixed(1)+' '+xy.y.toFixed(1);}).join(' ');
+        svg+=`<path d="${d}" fill="none" stroke="#5889d7" stroke-width="2" stroke-dasharray="5 4" opacity=".72" />`;
       }
     }
     for(const [i,segment] of (this.routeSegments||[]).entries()){
