@@ -70,3 +70,14 @@ Erros esperados: 401 sessão expirada, 403 escopo negado, 409 concorrência, 422
 - https://github.com/rahulmasal/Tracko — organização de jornada e visitas de campo.
 
 Implementação independente; nenhum código desses projetos foi incorporado.
+
+## Classificação territorial definida pelo usuário
+
+- Área azul: público A.
+- Área amarela: público B.
+- Área cinza: público C.
+- Área vermelha: público D+.
+
+A legenda mostra o vínculo textual e visual. Cada território pode ser classificado na tela Territórios e CTOs; a importação permite escolher a classificação do lote. O campo `audience` é persistido e exportado, e a cor é derivada da classificação. Áreas sem classificação permanecem assim até escolha explícita: nome, localização e cores antigas de demonstração não são evidência de público. Esta classificação não altera automaticamente a elegibilidade comercial.
+
+O arquivo de diagnóstico fornecido contém somente versão 187 e dois eventos `pagina_aberta`; não contém polígonos nem associações entre territórios e públicos.
