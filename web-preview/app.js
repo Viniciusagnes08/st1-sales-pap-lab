@@ -60,6 +60,77 @@ function routesPage(){const seller=data.sellers.find(s=>s.id===state.sellerId)||
  <div class="panel"><div class="panel-head"><div><div class="kicker">SEQUÊNCIA DE CAMPO</div><h2>Rota selecionada</h2></div><button class="btn sm ghost" data-action="route-export">${svg('download')} GeoJSON</button></div><div class="inspector"><label class="select input-label">Escolha o vendedor<select id="route-seller">${data.sellers.map(s=>`<option value="${s.id}" ${seller?.id===s.id?'selected':''}>${escape(s.name)}</option>`).join('')}</select></label><div class="mini-row"><span>Origem do posicionamento</span><strong>EXEMPLO • SEM GPS REAL</strong></div><div class="mini-row"><span>Total de pontos</span><strong>${points.length}</strong></div><div class="mini-row"><span>Distância total</span><strong>${(routeMeters(points)/1000).toLocaleString('pt-BR',{maximumFractionDigits:2})} km</strong></div><div class="mini-row"><span>Última amostra</span><strong>${current?pretty(current.at):'—'}</strong></div><div class="divider"></div><h3 class="section-title">Linha do tempo</h3><div class="timeline"><div class="timeline-entry"><span class="node"></span><div><strong>Início do trajeto</strong><small>${points[0]?pretty(points[0].at):'—'}</small></div></div>${data.visits.filter(v=>v.sellerId===seller?.id).map(v=>`<div class="timeline-entry"><span class="node"></span><div><strong>${escape(v.stage)}</strong><small>${escape(v.at)} • local informado</small></div></div>`).join('')}<div class="timeline-entry"><span class="node"></span><div><strong>Fim do trajeto</strong><small>${points.at(-1)?pretty(points.at(-1).at):'—'}</small></div></div></div><div class="callout warn">Trajeto composto por coordenadas inventadas para verificação visual. A conexão com GPS real e aplicativo PAP ainda depende de integração autenticada.</div></div></div></div>`;}
 function peoplePage(){const users=data.sellers.filter(s=>state.team==='all'||s.team===state.team);return `<div class="panel"><div class="panel-head"><div><div class="kicker">ORGANIZAÇÃO DO CAMPO</div><h2>Profissionais de campo</h2></div><span class="pill">${users.length} PROFISSIONAIS</span></div><div class="panel-pad"><div class="split-toolbar"><label class="input-label">Equipe<select id="team-filter" class="input">${teamOptions(state.team)}</select></label><button class="btn ghost sm" data-action="people-add" disabled>${svg('plus')} Cadastrar pelo Sales</button></div><div class="table-wrap"><table class="table"><thead><tr><th>Profissional</th><th>Equipe</th><th>GPS</th><th>Status</th><th></th></tr></thead><tbody>${users.map(s=>`<tr><td><strong>${escape(s.name)}</strong></td><td>${escape(s.team)}</td><td>Fictício</td><td><span class="mini-badge warn">EXEMPLO</span></td><td><button class="table-action" data-select-seller="${s.id}" data-page="routes">Rota</button> <button class="table-action danger" data-remove-seller="${s.id}">Excluir</button></td></tr>`).join('')||'<tr><td colspan="5">Nenhum profissional sincronizado</td></tr>'}</tbody></table></div></div></div>`; }
 function productsPage(){return `<div class="two-col"><div class="panel"><div class="panel-head"><div><div class="kicker">CATÁLOGO LOCAL</div><h2>Produtos e regras territoriais</h2></div><span class="pill">${data.plans.filter(x=>x.active).length} ATIVOS</span></div><div class="table-wrap"><table class="table"><thead><tr><th>Plano</th><th>Segmento</th><th>Preço</th><th>Estado</th><th></th></tr></thead><tbody>${data.plans.map(p=>`<tr><td><strong>${escape(p.name)}</strong><small style="display:block;color:#778698;margin-top:5px">Velocidade: ${escape(p.speed||'não definida')}</small></td><td>${escape(p.segment)}</td><td>${money(p.price)}</td><td><button type="button" class="table-action" data-plan-toggle="${p.id}">${p.active?'Ativo':'Inativo'}</button></td><td><button type="button" class="table-action danger" data-plan-remove="${p.id}">Remover</button></td></tr>`).join('')}</tbody></table></div><div class="panel-pad"><h3 class="section-title">Regras por território</h3><div class="table-wrap"><table class="table"><thead><tr><th>Território</th><th>Plano</th><th>Regra</th></tr></thead><tbody>${data.zones.flatMap(z=>data.plans.map(p=>{const r=data.rules.find(r=>r.zone_id===z.id&&r.plan_id===p.id);return `<tr><td>${escape(z.name)}</td><td>${escape(p.name)}</td><td><select class="input" data-rule-zone="${z.id}" data-rule-plan="${p.id}"><option value="clear" ${!r?'selected':''}>Sem regra</option><option value="allow" ${r?.decision==='allow'?'selected':''}>Permitido (local)</option><option value="deny" ${r?.decision==='deny'?'selected':''}>Negado (local)</option></select></td></tr>`;})).join('')}</tbody></table></div></div></div><div class="panel panel-pad"><div class="kicker">CADASTRO LOCAL DE OFERTA</div><h2>Rascunho de plano</h2><p>Rascunhos aqui salvos não são ofertas oficiais. Os planos válidos devem vir do catálogo autenticado do ST1 Sales.</p><form id="plan-form" class="form-stack"><label class="input-label">Nome do plano<input class="input" name="name" required minlength="3" maxlength="75" placeholder="Nome do plano"></label><label class="input-label">Segmento<select class="input" name="segment"><option>Residencial</option><option>PME</option><option>Indoor</option></select></label><label class="input-label">Velocidade (opcional)<input class="input" name="speed" maxlength="25" placeholder="Informe a velocidade"></label><label class="input-label">Preço local (opcional)<input class="input" name="price" type="number" min="0" max="100000" step="0.01" placeholder="Não definido"></label><button type="submit" class="btn primary">${svg('plus')} Salvar no navegador</button></form></div></div>`;}
+
+function importPreviewPanel() {
+ const p=state.importPreview;
+ if(!p)return '';
+ const folders=p.folders.slice(0,7).map(f=>'<span class="import-chip">'+escape(f)+'</span>').join('');
+ const names=[...p.polygons.slice(0,3).map(x=>'Área: '+x.name),...p.points.slice(0,3).map(x=>(x.possibleCto?'Possível CTO: ':'Ponto: ')+x.name)];
+ const sample=names.map(x=>'<li>'+escape(x)+'</li>').join('');
+ return '<section class="import-preview" aria-live="polite"><div class="import-preview-head"><h3>Prévia da importação</h3><span class="pill">'+escape(p.format)+'</span></div>'+
+ '<p><strong>'+escape(p.fileName)+'</strong>'+(p.internalName?' · KML interno: '+escape(p.internalName):'')+'</p>'+
+ '<div class="import-metrics"><span><strong>'+p.polygons.length+'</strong> polígonos</span><span><strong>'+p.ctoCandidates+'</strong> possíveis CTOs</span><span><strong>'+(p.points.length-p.ctoCandidates)+'</strong> outros pontos</span></div>'+
+ '<p class="import-note">Camada escolhida: '+escape(AREA_SEGMENTS[p.audience]?.label||'Não classificada')+'. Estes elementos ainda não foram gravados nem representam cobertura validada.</p>'+
+ (folders?'<div class="import-folders"><strong>Pastas/camadas:</strong> '+folders+'</div>':'')+
+ (sample?'<ul class="import-sample">'+sample+'</ul>':'')+
+ (p.ignored?'<p class="import-note">'+p.ignored+' elemento(s) não suportado(s) ignorado(s).</p>':'')+
+ '<div class="import-actions"><button class="btn primary" type="button" data-action="confirm-import">Confirmar importação local</button><button class="btn ghost" type="button" data-action="cancel-import">Cancelar</button></div></section>';
+}
+function importListPanel() {
+ if(!data.imports?.length)return '';
+ return '<div class="divider"></div><h3 class="section-title">Arquivos importados neste navegador</h3>'+
+ data.imports.map(i=>'<div class="import-file"><div><strong>'+escape(i.fileName)+'</strong><small>'+
+ i.polygons+' polígonos · '+i.points+' pontos · não sincronizado</small></div>'+
+ '<button class="table-action danger" type="button" data-import-remove="'+escape(i.id)+'">Remover</button></div>').join('');
+}
+function importFocusFor(preview){
+ const p=preview.points[0];
+ if(p)return {lat:p.lat,lon:p.lon};
+ const ring=preview.polygons[0]?.geometry?.type==='Polygon'?
+  preview.polygons[0].geometry.coordinates[0]:
+  preview.polygons[0]?.geometry?.coordinates?.[0]?.[0];
+ if(!ring?.length)return null;
+ return {lat:ring.reduce((a,v)=>a+v[1],0)/ring.length,lon:ring.reduce((a,v)=>a+v[0],0)/ring.length};
+}
+function commitTerritoryImport(){
+ const p=state.importPreview;
+ if(!p){notify('Selecione e analise um arquivo primeiro.','error');return;}
+ const old=JSON.stringify(data),batch='arquivo-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,7);
+ const color=AREA_SEGMENTS[p.audience]?.color||'#7299bd',audience=AREA_SEGMENTS[p.audience]?p.audience:'';
+ let zoneId=Math.max(0,...data.zones.map(z=>z.id)),ctoId=Math.max(0,...data.ctos.map(c=>c.id));
+ for(const x of p.polygons){
+  data.zones.push({id:++zoneId,name:x.name,geometry:x.geometry,category:audience||'NÃO CLASSIFICADO',audience,color,
+   source:'ARQUIVO LOCAL',sourceFolder:x.folder,importBatchId:batch});
+ }
+ for(const x of p.points){
+  if(x.possibleCto){
+   data.ctos.push({id:++ctoId,name:x.name,zone_id:null,lat:x.lat,lon:x.lon,ports_free:null,status:'unverified',
+    verified_at:null,source:'ARQUIVO LOCAL',sourceFolder:x.folder,importBatchId:batch});
+  }else{
+   data.referencePoints.push({name:x.name,lat:x.lat,lon:x.lon,sourceFolder:x.folder,importBatchId:batch});
+  }
+ }
+ data.imports.unshift({id:batch,fileName:p.fileName,format:p.format,polygons:p.polygons.length,points:p.points.length,
+  importedAt:new Date().toISOString()});
+ if(!save()){data=JSON.parse(old);return;}
+ state.importFocus=importFocusFor(p);state.importPreview=null;
+ render();notify('Arquivo importado apenas neste navegador; sem sincronização com a rede ST1.');
+}
+function removeTerritoryImport(batch){
+ const entry=data.imports?.find(i=>i.id===batch);if(!entry)return;
+ if(!confirm('Remover os elementos importados do arquivo '+entry.fileName+' deste navegador?'))return;
+ const old=JSON.stringify(data);
+ const removedIds=new Set(data.zones.filter(z=>z.importBatchId===batch).map(z=>z.id));
+ data.zones=data.zones.filter(z=>z.importBatchId!==batch);
+ data.ctos=data.ctos.filter(c=>c.importBatchId!==batch);
+ data.referencePoints=data.referencePoints.filter(p=>p.importBatchId!==batch);
+ data.assignments=data.assignments.filter(a=>!removedIds.has(a.zoneId));
+ data.rules=data.rules.filter(r=>!removedIds.has(r.zone_id));
+ data.imports=data.imports.filter(i=>i.id!==batch);
+ if(!save()){data=JSON.parse(old);return;}
+ state.importFocus=null;render();notify('Importação local removida.');
+}
+
 function coveragePage(){return `<div class="two-col"><div class="panel"><div class="panel-head"><div><div class="kicker">MALHA DE COBERTURA</div><h2>Territórios e CTOs</h2></div><span class="pill">${data.zones.length} ZONAS</span></div>${mapToolbar()}<div id="operation-map" class="map-viewport"></div>${mapFooter()}<div class="table-wrap"><table class="table"><thead><tr><th>CTO</th><th>Zona</th><th>Portas</th><th>Condição</th></tr></thead><tbody>${data.ctos.map(c=>`<tr><td><strong>${escape(c.name)}</strong></td><td>${escape(data.zones.find(z=>z.id===c.zone_id)?.name||'Sem área')}</td><td>${c.ports_free}</td><td>${c.example?'EXEMPLO • não validado':'Não verificado'}</td></tr>`).join('')}</tbody></table></div></div><div class="panel panel-pad"><div class="kicker">IMPORTAÇÃO TERRITORIAL</div><h2>Polígonos GeoJSON / KML</h2><p>Importe polígonos para organizar a área. Esses dados ficam somente neste navegador e não confirmam a cobertura da rede.</p><form id="zone-form" class="form-stack"><label class="input-label">Classificação dos polígonos importados<select class="input" name="audience">${segmentOptions()}</select></label><label class="input-label">Arquivo GeoJSON ou KML<input class="input" type="file" name="file" accept=".geojson,.json,.kml" required></label><button class="btn primary" type="submit">${svg('plus')} Importar polígonos</button></form><div class="divider"></div><h3 class="section-title">Territórios carregados</h3>${data.zones.map(z=>`<div class="mini-row"><span>${escape(z.name)}</span><label class="input-label">Público da área<select class="input" data-zone-audience="${z.id}">${segmentOptions(z.audience)}</select></label><button class="table-action danger" data-remove-zone="${z.id}">Remover</button></div>`).join('')}<div class="hint-block" style="margin-top:18px">A validação aqui confere apenas a estrutura do arquivo. Cobertura e capacidade dependem da fonte oficial da rede ST1.</div></div></div>`;}
 function page(){return ({overview, routes:routesPage,people:peoplePage,products:productsPage,coverage:coveragePage,visits:visitsPage,planning:planningPage,reports:reportsPage,admin:adminPage,sales:salesPage,itinerary:itineraryPage})[state.page]();}
 function stop(){if(state.timer)clearInterval(state.timer);state.timer=null;state.playing=false;}
