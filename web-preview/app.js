@@ -22,7 +22,7 @@ function safeRead(){try{const d=JSON.parse(localStorage.getItem(STORAGE));if(d&&
 let data=safeRead();
 data.visits=(data.visits||[]).map(v=>({...v,date:v.date||localDate(),place:v.place||'Local não informado',stage:STAGES.includes(v.stage)?v.stage:v.stage.includes('Proposta')?'Proposta':'Visitada'}));
 data.assignments ||= []; data.activity ||= [];data.itineraries ||= {};
-data.referencePoints ||= []; data.imports ||= [];
+data.referencePoints ||= []; data.referenceLines ||= []; data.imports ||= [];
 data.zones.forEach(z=>{if(AREA_SEGMENTS[z.audience]){z.category=z.audience;z.color=AREA_SEGMENTS[z.audience].color;}});
 const filters={date:'',stage:'all',search:''};
 const itinerary={sellerId:data.sellers[0]?.id||0,date:localDate()};
@@ -65,11 +65,11 @@ function importPreviewPanel() {
  const p=state.importPreview;
  if(!p)return '';
  const folders=p.folders.slice(0,7).map(f=>'<span class="import-chip">'+escape(f)+'</span>').join('');
- const names=[...p.polygons.slice(0,3).map(x=>'Área: '+x.name),...p.points.slice(0,3).map(x=>(x.possibleCto?'Possível CTO: ':'Ponto: ')+x.name)];
+ const names=[...p.polygons.slice(0,2).map(x=>'Área: '+x.name),...p.lines.slice(0,2).map(x=>'Linha: '+x.name),...p.points.slice(0,2).map(x=>(x.possibleCto?'Possível CTO: ':'Ponto: ')+x.name)];
  const sample=names.map(x=>'<li>'+escape(x)+'</li>').join('');
  return '<section class="import-preview" aria-live="polite"><div class="import-preview-head"><h3>Prévia da importação</h3><span class="pill">'+escape(p.format)+'</span></div>'+
  '<p><strong>'+escape(p.fileName)+'</strong>'+(p.internalName?' · KML interno: '+escape(p.internalName):'')+'</p>'+
- '<div class="import-metrics"><span><strong>'+p.polygons.length+'</strong> polígonos</span><span><strong>'+p.ctoCandidates+'</strong> possíveis CTOs</span><span><strong>'+(p.points.length-p.ctoCandidates)+'</strong> outros pontos</span></div>'+
+ '<div class="import-metrics"><span><strong>'+p.polygons.length+'</strong> polígonos</span><span><strong>'+p.lines.length+'</strong> linhas</span><span><strong>'+p.ctoCandidates+'</strong> possíveis CTOs</span><span><strong>'+(p.points.length-p.ctoCandidates)+'</strong> outros pontos</span></div>'+
  '<p class="import-note">Camada escolhida: '+escape(AREA_SEGMENTS[p.audience]?.label||'Não classificada')+'. Estes elementos ainda não foram gravados nem representam cobertura validada.</p>'+
  (folders?'<div class="import-folders"><strong>Pastas/camadas:</strong> '+folders+'</div>':'')+
  (sample?'<ul class="import-sample">'+sample+'</ul>':'')+
@@ -80,7 +80,7 @@ function importListPanel() {
  if(!data.imports?.length)return '';
  return '<div class="divider"></div><h3 class="section-title">Arquivos importados neste navegador</h3>'+
  data.imports.map(i=>'<div class="import-file"><div><strong>'+escape(i.fileName)+'</strong><small>'+
- i.polygons+' polígonos · '+i.points+' pontos · não sincronizado</small></div>'+
+ i.polygons+' polígonos · '+i.lines+' linhas · '+i.points+' pontos · não sincronizado</small></div>'+
  '<button class="table-action danger" type="button" data-import-remove="'+escape(i.id)+'">Remover</button></div>').join('');
 }
 function importFocusFor(preview){
@@ -89,7 +89,7 @@ function importFocusFor(preview){
  const ring=preview.polygons[0]?.geometry?.type==='Polygon'?
   preview.polygons[0].geometry.coordinates[0]:
   preview.polygons[0]?.geometry?.coordinates?.[0]?.[0];
- if(!ring?.length)return null;
+ if(!ring?.length){const line=preview.lines[0]?.geometry;const point=line?.type==='LineString'?line.coordinates?.[0]:line?.coordinates?.[0]?.[0];return point?{lat:point[1],lon:point[0]}:null;}
  return {lat:ring.reduce((a,v)=>a+v[1],0)/ring.length,lon:ring.reduce((a,v)=>a+v[0],0)/ring.length};
 }
 function commitTerritoryImport(){
@@ -102,6 +102,9 @@ function commitTerritoryImport(){
   data.zones.push({id:++zoneId,name:x.name,geometry:x.geometry,category:audience||'NÃO CLASSIFICADO',audience,color,
    source:'ARQUIVO LOCAL',sourceFolder:x.folder,importBatchId:batch});
  }
+ for(const x of p.lines){
+  data.referenceLines.push({name:x.name,geometry:x.geometry,sourceFolder:x.folder,importBatchId:batch});
+ }
  for(const x of p.points){
   if(x.possibleCto){
    data.ctos.push({id:++ctoId,name:x.name,zone_id:null,lat:x.lat,lon:x.lon,ports_free:null,status:'unverified',
@@ -110,7 +113,7 @@ function commitTerritoryImport(){
    data.referencePoints.push({name:x.name,lat:x.lat,lon:x.lon,sourceFolder:x.folder,importBatchId:batch});
   }
  }
- data.imports.unshift({id:batch,fileName:p.fileName,format:p.format,polygons:p.polygons.length,points:p.points.length,
+ data.imports.unshift({id:batch,fileName:p.fileName,format:p.format,polygons:p.polygons.length,lines:p.lines.length,points:p.points.length,
   importedAt:new Date().toISOString()});
  if(!save()){data=JSON.parse(old);return;}
  state.importFocus=importFocusFor(p);state.importPreview=null;
@@ -124,6 +127,7 @@ function removeTerritoryImport(batch){
  data.zones=data.zones.filter(z=>z.importBatchId!==batch);
  data.ctos=data.ctos.filter(c=>c.importBatchId!==batch);
  data.referencePoints=data.referencePoints.filter(p=>p.importBatchId!==batch);
+ data.referenceLines=data.referenceLines.filter(p=>p.importBatchId!==batch);
  data.assignments=data.assignments.filter(a=>!removedIds.has(a.zoneId));
  data.rules=data.rules.filter(r=>!removedIds.has(r.zone_id));
  data.imports=data.imports.filter(i=>i.id!==batch);
@@ -164,7 +168,7 @@ root.addEventListener('input',ev=>{if(ev.target.id==='route-range'){stop();state
 root.addEventListener('submit',async ev=>{ev.preventDefault();const form=ev.target,fields=new FormData(form);
  try{if(form.id==='plan-form'){const name=String(fields.get('name')||'').trim();if(name.length<3)throw Error('Nome obrigatório.');const raw=String(fields.get('price')||'');const price=raw===''?null:Number(raw);if(price!==null&&(!Number.isFinite(price)||price<0||price>100000))throw Error('Preço inválido.');const id=Math.max(0,...data.plans.map(p=>p.id))+1;data.plans.push({id,name:name.replace(/^LOCAL\s*•\s*/i,''),segment:String(fields.get('segment')),speed:String(fields.get('speed')||'—'),price,active:true});save();render();notify('Plano cadastrado.');}
  if(form.id==='eligibility-form'){state.result=evaluate({planId:fields.get('planId'),ctoId:fields.get('ctoId')});render();}
- if(form.id==='zone-form'){const file=fields.get('file');const preview=await readTerritoryFile(file);state.importPreview={...preview,audience:String(fields.get('audience')||'')};render();notify('Arquivo analisado. Confira a prévia e confirme para importar.');}}
+ if(form.id==='zone-form'){const file=fields.get('file');state.importPreview=null;const preview=await readTerritoryFile(file);state.importPreview={...preview,audience:String(fields.get('audience')||'')};render();notify('Arquivo analisado. Confira a prévia e confirme para importar.');}}
  catch(e){notify(e.message||'Falha na operação.','error');}
 });
 
